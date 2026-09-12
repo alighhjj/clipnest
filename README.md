@@ -80,7 +80,9 @@ clipnest/
 │   ├── capabilities/default.json
 │   ├── tauri.conf.json
 │   └── Cargo.toml
-└── scripts/make-icon.py        生成应用图标源图
+└── scripts/
+    ├── make-icon.py            生成应用图标源图
+    └── verify.py               无 Rust 环境下的静态校验
 ```
 
 ## CI/CD（GitHub Actions）
@@ -89,15 +91,13 @@ clipnest/
 
 | 文件 | 触发 | 干什么 |
 |---|---|---|
-| `.github/workflows/ci.yml` | push 到 `main` / `master`、PR、手动 | 前端类型检查 + 构建；三个平台各跑一遍 `cargo check`；fmt / clippy 作为提示 |
+| `.github/workflows/ci.yml` | push 到 `main` / `master`、PR、手动 | 静态校验 + 前端类型检查与构建；三个平台各跑一遍 `cargo check`；fmt / clippy 作为提示 |
 | `.github/workflows/release.yml` | 推 `v*` 标签，或手动触发 | 四份矩阵构建（macOS 双架构 + Linux + Windows），产出安装包并创建 **草稿** Release |
 
 ### 出包流程
 
 ```bash
-git init
-git add .
-git commit -m "feat: ClipNest 初版"
+# 本地仓库已初始化并完成首次提交（分支 main），只需接上远端
 git remote add origin git@github.com:YOUR_GITHUB_USER/clipnest.git
 git push -u origin main
 
@@ -162,6 +162,7 @@ npm install
 npm run tauri:dev        # 开发模式（热重载）
 npm run tauri:build      # 打安装包，产物在 src-tauri/target/release/bundle/
 npm run build            # 只做前端类型检查 + 构建
+npm run verify           # 静态校验（不需要 Rust 工具链）
 ```
 
 想换图标：
@@ -170,6 +171,28 @@ npm run build            # 只做前端类型检查 + 构建
 python scripts/make-icon.py app-icon.png   # 需要 Pillow
 npx tauri icon app-icon.png
 ```
+
+### 静态校验（`npm run verify`）
+
+没装 Rust 也能查出不少问题，改完配置或加了新命令之后建议跑一遍：
+
+```bash
+npm run verify           # 需要 python 及 pyyaml、jsonschema
+npm run verify:offline   # 跳过需要联网的 schema 校验
+```
+
+`scripts/verify.py` 的检查项：
+
+| 检查项 | 挡掉什么问题 |
+|---|---|
+| `tauri.conf.json` 对官方 v2 schema | 配置字段写错，否则要等 CI 编译才暴露 |
+| `bundle.icon` 列出的文件是否存在 | 图标缺失会让 `generate_context!` 直接编译失败 |
+| `frontendDist` 目录是否存在 | 没先 `npm run build` 就 `cargo check` 的经典错误 |
+| 前端 `invoke('x')` ↔ 后端 `generate_handler!` | 命令名拼错，只在运行时才报错 |
+| capabilities 权限覆盖 | 前端调了某个 window API 却没授权 |
+| 工作流里 Rust job 的步骤顺序 | `cargo check` 前漏了建前端，CI 必然失败 |
+
+CI 的 `web` job 里也跑了这一步，把这类问题挡在三个平台的编译矩阵之前（几秒 vs 几十分钟）。
 
 ## 设计说明
 
