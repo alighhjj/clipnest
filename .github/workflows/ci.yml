@@ -1,0 +1,156 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 前端：类型检查 + 生产构建，几十秒就出结果
+  web:
+    name: 前端（类型检查 + 构建）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: TypeScript 类型检查
+        run: npx tsc --noEmit
+
+      - name: 构建前端
+        run: npx vite build
+
+      # 把「不需要 Rust 编译器也能发现的问题」挡在昂贵的三平台矩阵之前：
+      # tauri.conf.json 官方 schema、图标资源存在性、前后端命令名对齐、capabilities 权限覆盖。
+      - name: 安装 Python 校验依赖
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 静态校验
+        run: |
+          pip install pyyaml jsonschema
+          python scripts/verify.py
+
+  # 后端：三个平台各跑一遍 cargo check。
+  # 注意 tauri-codegen 在编译期会读 frontendDist，所以必须先产出 dist/。
+  rust:
+    name: Rust 编译检查 (${{ matrix.platform }})
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [ubuntu-22.04, windows-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Linux 系统依赖
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建前端（cargo check 需要 dist/ 存在）
+        run: npm run build
+
+      - name: cargo check
+        working-directory: src-tauri
+        run: cargo check --all-targets
+
+  # 风格检查：仅提示，不阻塞。首次跑完 `cargo fmt` / 修完 clippy 后
+  # 可以把这两个 continue-on-error 删掉，变成硬门禁。
+  lint:
+    name: Rust 风格检查（提示性）
+    runs-on: ubuntu-22.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Linux 系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建前端
+        run: npm run build
+
+      - name: cargo fmt --check
+        working-directory: src-tauri
+        continue-on-error: true
+        run: cargo fmt --all -- --check
+
+      - name: cargo clippy
+        working-directory: src-tauri
+        continue-on-error: true
+        run: cargo clippy --all-targets --all-features

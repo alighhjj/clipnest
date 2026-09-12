@@ -1,0 +1,111 @@
+name: Release
+
+# 推 v* 标签自动出包；也可以在 Actions 页面手动触发。
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "发布标签，例如 v0.1.0"
+        required: true
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  bundle:
+    name: 打包 ${{ matrix.name }}
+    runs-on: ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS (Apple Silicon)
+            platform: macos-latest
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+          - name: macOS (Intel)
+            platform: macos-latest
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+          - name: Linux (x64)
+            platform: ubuntu-22.04
+            target: ""
+            args: ""
+          - name: Windows (x64)
+            platform: windows-latest
+            target: ""
+            args: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Linux 系统依赖
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            build-essential \
+            curl \
+            wget \
+            file \
+            libxdo-dev \
+            libssl-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装 Rust（macOS 需要双架构）
+        if: matrix.target != ''
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 安装 Rust
+        if: matrix.target == ''
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 缓存 Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target || 'default' }}
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 构建并上传 Release 产物
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: "ClipNest ${{ github.event.inputs.tag || github.ref_name }}"
+          releaseBody: |
+            跨平台剪贴板历史管理器。
+
+            | 平台 | 安装包 |
+            | --- | --- |
+            | Windows | `.msi` / `-setup.exe` |
+            | macOS | `.dmg` |
+            | Linux | `.AppImage` / `.deb` / `.rpm` |
+
+            首次启动会在托盘中常驻，按 `Ctrl+Shift+V`（macOS 为 `⌘⇧V`）唤出面板。
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

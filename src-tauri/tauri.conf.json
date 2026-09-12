@@ -1,0 +1,69 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ClipNest",
+  "version": "0.1.0",
+  "identifier": "com.clipnest.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5173",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "main",
+        "title": "ClipNest",
+        "width": 900,
+        "height": 640,
+        "minWidth": 560,
+        "minHeight": 420,
+        "resizable": true,
+        "decorations": false,
+        "transparent": false,
+        "shadow": true,
+        "visible": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "focus": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost",
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/media/**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "copyright": "© 2026 ClipNest",
+    "shortDescription": "跨平台剪贴板历史管理器",
+    "longDescription": "ClipNest 常驻托盘记录剪贴板历史，支持文本与图片、全文搜索、置顶收藏、全局快捷键唤出。",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  }
+}
