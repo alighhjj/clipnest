@@ -104,10 +104,7 @@ impl ClipboardBridge {
     pub fn write_text(&self, text: String) -> Result<(), String> {
         let (ack_tx, ack_rx) = mpsc::channel();
         self.tx
-            .send(Request::SetText {
-                text,
-                ack: ack_tx,
-            })
+            .send(Request::SetText { text, ack: ack_tx })
             .map_err(|_| "剪贴板监听线程已退出".to_string())?;
         ack_rx
             .recv_timeout(Duration::from_secs(5))

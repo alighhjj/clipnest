@@ -1,0 +1,46 @@
+name: 生成 Cargo.lock
+
+# 本仓库的维护者机器上不装 Rust，所以 Cargo.lock 无法在本地生成。
+# 这个工作流把「生成锁文件」这件事交给 CI：手动触发一次，它会把
+# src-tauri/Cargo.lock 提交回当前分支。
+#
+# 为什么必须有 Cargo.lock：
+#   Cargo.toml 里写的是 `tauri = "2"` 这类浮动范围，没有锁文件时每次构建
+#   都会重新解析到「当时最新」的依赖版本，构建不可复现，也拖累 rust-cache
+#   的命中率（缓存 key 依赖 Cargo.lock 的哈希）。
+#
+# 什么时候再跑一次：手动改了 src-tauri/Cargo.toml 的依赖之后。
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    name: 生成并提交 Cargo.lock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # 只做依赖图解析，不编译任何东西，所以不需要 Linux 系统依赖，也就很快
+      - name: 生成 Cargo.lock
+        working-directory: src-tauri
+        run: cargo generate-lockfile
+
+      - name: 提交回仓库
+        run: |
+          git add src-tauri/Cargo.lock
+          if git diff --cached --quiet; then
+            echo "Cargo.lock 无变化，无需提交"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: 生成并锁定 Cargo.lock"
+          git push
+          echo "已提交 Cargo.lock"

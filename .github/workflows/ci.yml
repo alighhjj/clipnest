@@ -100,12 +100,11 @@ jobs:
         working-directory: src-tauri
         run: cargo check --all-targets
 
-  # 风格检查：仅提示，不阻塞。首次跑完 `cargo fmt` / 修完 clippy 后
-  # 可以把这两个 continue-on-error 删掉，变成硬门禁。
+  # 硬门禁。接入时这两步曾设成提示性，因为代码没在本地跑过 rustfmt；
+  # 现已验证 clippy 零警告、rustfmt 零差异，于是收紧为阻塞检查。
   lint:
-    name: Rust 风格检查（提示性）
+    name: Rust 格式与静态检查
     runs-on: ubuntu-22.04
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -147,10 +146,8 @@ jobs:
 
       - name: cargo fmt --check
         working-directory: src-tauri
-        continue-on-error: true
         run: cargo fmt --all -- --check
 
       - name: cargo clippy
         working-directory: src-tauri
-        continue-on-error: true
-        run: cargo clippy --all-targets --all-features
+        run: cargo clippy --all-targets --all-features -- -D warnings

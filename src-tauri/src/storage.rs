@@ -356,11 +356,9 @@ impl Storage {
     fn bump_existing(&self, hash: &str, now: i64) -> Result<Option<Clip>, String> {
         let conn = self.conn.lock();
         let existing: Option<i64> = conn
-            .query_row(
-                "SELECT id FROM clips WHERE hash = ?1",
-                params![hash],
-                |r| r.get(0),
-            )
+            .query_row("SELECT id FROM clips WHERE hash = ?1", params![hash], |r| {
+                r.get(0)
+            })
             .optional()
             .map_err(|e| e.to_string())?;
 

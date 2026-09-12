@@ -8,7 +8,10 @@ use crate::{apply_settings, AppState, EVENT_HISTORY_CLEARED};
 
 /// 列出历史条目。`query` 为空时按默认条件返回最近 300 条。
 #[tauri::command]
-pub fn list_clips(state: State<'_, AppState>, query: Option<ClipQuery>) -> Result<Vec<Clip>, String> {
+pub fn list_clips(
+    state: State<'_, AppState>,
+    query: Option<ClipQuery>,
+) -> Result<Vec<Clip>, String> {
     state.storage.list(&query.unwrap_or_default())
 }
 

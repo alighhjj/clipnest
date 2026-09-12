@@ -58,12 +58,11 @@ pub fn run() {
             let settings = Settings::load(&settings_path);
 
             let storage = Arc::new(Storage::new(&data_dir)?);
-            let bridge =
-                ClipboardBridge::start(handle.clone(), Arc::clone(&storage), &settings);
+            let bridge = ClipboardBridge::start(handle.clone(), Arc::clone(&storage), &settings);
 
             // 绑定全局快捷键。失败不致命（可能被别的软件占用），只是没法一键唤出。
-            let spec = shortcut::parse(&settings.shortcut)
-                .unwrap_or_else(|_| shortcut::default_spec());
+            let spec =
+                shortcut::parse(&settings.shortcut).unwrap_or_else(|_| shortcut::default_spec());
             if let Err(err) = shortcut::rebind(&handle, spec) {
                 eprintln!("[clipnest] {err}");
             }
