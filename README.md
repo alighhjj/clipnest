@@ -1,9 +1,7 @@
 # ClipNest
 
-[![CI](https://github.com/YOUR_GITHUB_USER/clipnest/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/clipnest/actions/workflows/ci.yml)
-[![Release](https://github.com/YOUR_GITHUB_USER/clipnest/actions/workflows/release.yml/badge.svg)](https://github.com/YOUR_GITHUB_USER/clipnest/actions/workflows/release.yml)
-
-> 徽章里的 `YOUR_GITHUB_USER` 换成你的用户名即可。
+[![CI](https://github.com/alighhjj/clipnest/actions/workflows/ci.yml/badge.svg)](https://github.com/alighhjj/clipnest/actions/workflows/ci.yml)
+[![Release](https://github.com/alighhjj/clipnest/actions/workflows/release.yml/badge.svg)](https://github.com/alighhjj/clipnest/actions/workflows/release.yml)
 
 常驻托盘的跨平台剪贴板历史管理器。用 **Tauri v2 + React + Rust** 写成，
 Windows / macOS / Linux 一套代码，安装包体积小、内存占用低。
@@ -98,7 +96,7 @@ clipnest/
 
 ```bash
 # 本地仓库已初始化并完成首次提交（分支 main），只需接上远端
-git remote add origin git@github.com:YOUR_GITHUB_USER/clipnest.git
+git remote add origin https://github.com/alighhjj/clipnest.git
 git push -u origin main
 
 git tag v0.1.0
