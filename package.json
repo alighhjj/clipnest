@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "verify": "python scripts/verify.py",
     "verify:offline": "python scripts/verify.py --no-net",
+    "check:dib": "python scripts/check-clipboard-dib.py",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build"

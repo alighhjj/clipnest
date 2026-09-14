@@ -28,7 +28,15 @@ arboard = "3.4"
 sha2 = "0.10"
 hex = "0.4"
 parking_lot = "0.12"
-image = { version = "0.25", default-features = false, features = ["png"] }
+# bmp 是给 clipboard.rs 里解析旧式 CF_DIB 用的：arboard 在 Windows 上
+# 只认「自定义 PNG 格式」与 CF_DIBV5，CF_DIB 得我们自己读自己解。
+image = { version = "0.25", default-features = false, features = ["png", "bmp"] }
+
+[target.'cfg(windows)'.dependencies]
+# 版本范围与 arboard 在 Windows 下的声明完全一致，保证依赖图里只有一个
+# clipboard-win 节点（当前 Cargo.lock 锁在 5.4.1），不会重复编译。
+# raw::get_vec / raw::is_format_avail / formats::CF_DIB 在 5.3.1 与 5.4.1 中签名相同。
+clipboard-win = { version = "5.3.1", features = ["std"] }
 
 [profile.release]
 codegen-units = 1

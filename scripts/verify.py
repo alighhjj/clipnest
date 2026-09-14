@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import urllib.request
 from pathlib import Path
@@ -163,6 +164,41 @@ def check_lockfile() -> None:
         report("fail", "缺少 package-lock.json，CI 里的 npm ci 会失败")
 
 
+def check_clipboard_dib() -> None:
+    """跑 clipboard.rs 里 CF_DIB 解析逻辑的离线对照测试。
+
+    「头部偏移读错」编译器不会报，只会在运行时把图弄花，所以在没有 Rust 工具链的
+    机器上把这块逻辑单独测一遍。脚本依赖 Pillow，缺失时降级为警告。
+    """
+    section("CF_DIB 解析对照测试")
+    script = ROOT / "scripts" / "check-clipboard-dib.py"
+    if not script.is_file():
+        report("fail", "缺少 scripts/check-clipboard-dib.py")
+        return
+
+    proc = subprocess.run(
+        [sys.executable, str(script)], capture_output=True, text=True, check=False
+    )
+    out = proc.stdout or ""
+
+    if proc.returncode == 2:
+        report("warn", "未安装 Pillow，跳过 CF_DIB 对照测试")
+        return
+
+    summary = next((ln.strip() for ln in out.splitlines() if ln.startswith("通过")), "")
+    if proc.returncode == 0:
+        report("ok", f"CF_DIB 解析对照测试通过（{summary or '全部通过'}）")
+        return
+
+    report("fail", f"CF_DIB 解析对照测试未通过（{summary or '有失败项'}）")
+    for line in out.splitlines():
+        if line.startswith("  - "):
+            report("fail", "  " + line[4:])
+    if proc.stderr.strip():
+        last = proc.stderr.strip().splitlines()[-1]
+        report("fail", f"  脚本 stderr：{last}")
+
+
 # ------------------------------------------------------------- 前后端对齐校验
 
 def find_commands_called() -> set[str]:
@@ -303,6 +339,7 @@ def main() -> int:
     config = check_config()
     check_lockfile()
     check_workflows()
+    check_clipboard_dib()
     check_command_alignment()
     check_permissions(config)
     if not offline:
