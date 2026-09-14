@@ -89,7 +89,7 @@ clipnest/
 
 | 文件 | 触发 | 干什么 |
 |---|---|---|
-| `.github/workflows/ci.yml` | push 到 `main` / `master`、PR、手动 | 静态校验 + 前端类型检查与构建；三个平台各跑一遍 `cargo check`；fmt / clippy 作为提示 |
+| `.github/workflows/ci.yml` | push 到 `main` / `master`、PR、手动 | 静态校验 + 前端类型检查与构建；三个平台各跑一遍 `cargo check`；fmt / clippy 为**硬门禁** |
 | `.github/workflows/release.yml` | 推 `v*` 标签，或手动触发 | 四份矩阵构建（macOS 双架构 + Linux + Windows），产出安装包并创建 **草稿** Release |
 
 ### 出包流程
@@ -99,17 +99,19 @@ clipnest/
 git remote add origin https://github.com/alighhjj/clipnest.git
 git push -u origin main
 
-git tag v0.1.0
-git push origin v0.1.0      # 这一步就会开始打包
+# 升版：package.json / package-lock.json / src-tauri/Cargo.toml / tauri.conf.json 四处要一致
+git tag -a v0.1.1 -m "ClipNest v0.1.1"
+git push origin v0.1.1      # 这一步就会开始打包
 ```
 
 几分钟后在仓库的 **Releases** 页面会看到一个草稿，里面挂着：
 
-- `ClipNest_0.1.0_x64-setup.exe` / `.msi`（Windows）
-- `ClipNest_0.1.0_aarch64.dmg`、`ClipNest_0.1.0_x64.dmg`（macOS）
-- `ClipNest_0.1.0_amd64.AppImage` / `.deb` / `.rpm`（Linux）
+- `ClipNest_0.1.1_x64-setup.exe` / `.msi`（Windows）
+- `ClipNest_0.1.1_aarch64.dmg`、`ClipNest_0.1.1_x64.dmg`（macOS）
+- `ClipNest_0.1.1_amd64.AppImage` / `.deb` / `.rpm`（Linux）
 
-确认没问题再点发布。想改口径就让 `release.yml` 里的 `releaseDraft: false`。
+确认没问题再点发布（或 `gh release edit v0.1.1 --draft=false`）。
+想改口径就让 `release.yml` 里的 `releaseDraft: false`。
 
 ### 关于签名
 
@@ -118,18 +120,14 @@ git push origin v0.1.0      # 这一步就会开始打包
 - Windows 首次运行会有 SmartScreen 警告，选「仍要运行」即可。要消掉需配 `TAURI_SIGNING_PRIVATE_KEY` 和证书。
 - macOS 直接打开会被 Gatekeeper 拦，右键 →「打开」一次即可。要正式分发需要 Apple Developer 账号和公证（notarization）。
 
-### fmt / clippy 为什么是「提示性」
+### fmt / clippy 是硬门禁
 
-`cargo fmt --check` 和 `clippy` 那两步挂了 `continue-on-error`，
-因为代码是用别的机器写的、没跑过 rustfmt，首次推送很可能有格式差异。
+`cargo fmt --check` 与 `cargo clippy --all-targets --all-features -- -D warnings`
+都在 `lint` job 里阻塞合并。所以**改动 Rust 代码前先确认本机能不能跑 rustfmt**：
+本机没装 Rust 时，格式只能按 rustfmt 的约定手工对齐，风险靠 CI 兜住。
 
-想要硬门禁：在本地（或 CI 的一次性任务里）跑一遍
-
-```bash
-cd src-tauri && cargo fmt && cargo clippy --fix --allow-dirty
-```
-
-然后把 `ci.yml` 里 `lint` job 的 `continue-on-error` 和两个步骤上的 `continue-on-error` 删掉。
+需要临时放宽时，删掉 `ci.yml` 里 `lint` job 对应步骤的校验参数即可
+（不要用 `continue-on-error`，那会让失败被静默吞掉，2026-09 就因此漏过一次格式差异）。
 
 ## 环境准备
 
