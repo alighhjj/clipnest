@@ -7,3 +7,6 @@ __pycache__/
 .DS_Store
 *.local
 *.log
+
+# WorkBuddy 的本地工作目录（内部笔记与记忆），不入库
+.workbuddy/
