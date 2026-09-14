@@ -1,7 +1,7 @@
 {
   "name": "clipnest",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ClipNest - 跨平台剪贴板历史管理器",
   "type": "module",
   "scripts": {
